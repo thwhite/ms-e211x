@@ -14,8 +14,9 @@ n_items = 10;
 n_inventory = 1000;
 
 % Initialize arrays
-pi_bids = zeros(1, n_customers);
-A_requests = zeros(n_items, n_customers);
+pi_bids = xlsread("pi_vec.xlsx");
+A_requests = xlsread("Amat.xlsx");
+A_requests = A_requests(:,2:10001);
 b_inventory = n_inventory*ones(1, n_items);
 true_prices = [7,1,3,4,4,7,4,7,3,4];
 
@@ -97,9 +98,35 @@ ratio_dyn = revenue_dyn/offline_revenue;
 
 
 %% Problem 3
+A_requests = xlsread("Amat.xlsx");
+A_requests = A_requests(:,2:10001);
+b_inventory_dyn = n_inventory*ones(1, n_items); %setting inventory to back to full amount
+b_inventory = n_inventory*ones(1, n_items);
+revenue_dyn = 0;
+offline_revenue = 46969.8;
+for g = 1: n_customers
+    if g >= 2
+        if b_inventory_dyn >= 0
+            A_requests_dyn_upd = A_requests(:, g:g+test_run_length);
+            pi_bids_dyn_upd = pi_bids(g:g+test_run_length);
+            b_inventory_dyn_upd = b_inventory_dyn/(g:g+test_run_length/n_customers);
+            [x,~,~,~,lambda] = linprog(-pi_bids_dyn_upd', A_requests_dyn_upd, b_inventory_dyn_upd, [], [], zeros(size(pi_bids)), ones(size(pi_bids)));
+           
+        end
+        if (pi_bids(g) >= lambda.ineqlin'*A_requests(:, g)) && all(b_inventory_dyn' >= A_requests(:, g)) % if bid greater than dual price, accept
+            b_inventory_dyn = b_inventory_dyn - A_requests(:, g)'; % update inventory
+            revenue_dyn = revenue_dyn + pi_bids(g); % update revenue from dynamic problem
+        end
 
-
-
-%% Problem 4
+        if b_inventory >= 0
+            b_inventory = b_inventory - A_requests(:, g)';
+            action_dependent = pi_bids(1:g)*x(1:g)-(g/n_customers)*offline_revenue; %compute revenue from action-history dependent learning algorithm
+        end            
+                                              
+            plot(g,revenue_dyn)
+            plot(g,action_dependent)
+            plot(g,offline_revenue)
+    end
+end
 
 
